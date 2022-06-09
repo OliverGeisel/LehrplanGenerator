@@ -1,4 +1,5 @@
 import json
+import pathlib
 import re
 from typing import List
 
@@ -42,7 +43,7 @@ new_layout = [[gui.Text("Bitte füllen Sie die folgenden Felder aus")],
               [gui.Frame("Struktur", create_new_chapter(1), key="Structure-Frame")],
               [gui.Frame("Absätze",
                          [[gui.Button("Gruppe", key="new-group"), gui.Button("Kapitel", key="new-chapter")]])],
-              [gui.Button("Erstellen!", key="Create-New")]
+              [gui.Button("Erstellen!", key="Create-New"), gui.Input("Plan.json", key="create-file-name")]
               ]
 
 
@@ -66,8 +67,18 @@ def export_to_json(values: dict[str, any]):
     structure = {}
     for i in structure_keys:
         structure[i] = values[i]
-
-    with open("Test.json", "w") as output_file:
+    file_name: str
+    file_name = values["create-file-name"]
+    file_name = "Plan.json" if file_name in [None, ""] else file_name
+    file_name = file_name if file_name.endswith(".json") else file_name + ".json"
+    path = pathlib.Path(file_name)
+    directory = path.parent
+    if not directory.exists():
+        directory.mkdir(parents=True)
+    if path.exists():
+        gui.popup_error("File existiert bereits. Bitte etwas anderes wählen!")
+        return
+    with open(file_name, "w") as output_file:
         coursePlan = courseplan.CoursePlan(meta_object, content, structure)
         output_file.write("{\n")
         for i, elem in enumerate(coursePlan.getAll().items()):
