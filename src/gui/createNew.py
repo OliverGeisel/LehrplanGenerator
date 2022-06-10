@@ -13,7 +13,9 @@ new_meta_line = "New-Meta-Line"
 inhalt_layout = [[gui.Button("Weiters Ziel", key="New-Content-Line")]]
 
 meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
-               [gui.Text("Beschreibung:"), gui.Input(key="meta-description-input")],
+               [gui.Text("Beschreibung:"),
+                gui.MLine(key="meta-description-input", size=(45, 5), auto_size_text=True, auto_refresh=True,
+                          autoscroll=True, )],
                [gui.Text("Jahr:"), gui.Input(key="meta-year-input")],
                [gui.Text("Schultyp:"),
                 gui.Combo(["Gymnasium", "Grundschule", "Realschule", "Universität", "Berufsschule"], ["Gymnasium"],
@@ -59,7 +61,7 @@ def export_to_json(values: dict[str, any]):
     meta_keys = [key for key in keys if "meta" in key]
     meta_object = {}
     for i in meta_keys:
-        meta_object[i] = values[i]
+        meta_object[i.removeprefix("meta-").removesuffix("-input")] = values[i]
     structure_keys = [key for key in keys if "chapter" in key or "structure" in key]
 
     content = {}
@@ -76,8 +78,9 @@ def export_to_json(values: dict[str, any]):
     if not directory.exists():
         directory.mkdir(parents=True)
     if path.exists():
-        gui.popup_error("File existiert bereits. Bitte etwas anderes wählen!")
-        return
+        back = gui.popup_yes_no("File existiert bereits. Überschreiben?")
+        if back == "No":
+            return
     with open(file_name, "w") as output_file:
         coursePlan = courseplan.CoursePlan(meta_object, content, structure)
         output_file.write("{\n")
@@ -120,8 +123,9 @@ def get_element(window: gui.Window, element_key: str):
 
 
 def run_new(window: gui.Window):
+    event: str
     while True:
-        event: str
+        window.refresh()
         event, value = window.read()
         if event in [gui.WIN_CLOSE_ATTEMPTED_EVENT, gui.WIN_CLOSED]:
             break
@@ -144,4 +148,7 @@ def run_new(window: gui.Window):
 
 
 def create_new():
-    return gui.Window("Neuer Plan", layout=new_layout)
+    return gui.Window("Neuer Plan", size=(500, 600),
+                      layout=[[gui.Column(layout=new_layout, size=(480, 600), expand_x=True, expand_y=True,
+                                          scrollable=True, vertical_scroll_only=True, vertical_alignment="t")]],
+                      resizable=True)

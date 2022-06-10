@@ -7,10 +7,11 @@ from gui import maingui, createNew
 def run():
     window = maingui.crate_main()
     event, values = window.read()
+    window.close()  # todo überdenken
     if event == "Neuer Plan":
         second_window = createNew.create_new()
         createNew.run_new(second_window)
-    if event == "Öffne File":
+    elif event == "Öffne File":
         file = maingui.popup_import()
         with open(file) as plan:
             content = plan.read()
@@ -23,6 +24,8 @@ def run():
         jsonContent = decoder.decode(content)
         second_window = maingui.create_edit(jsonContent)
         maingui.run_edit(second_window)
+    else:
+        window.close()
     window.close()
 
 
