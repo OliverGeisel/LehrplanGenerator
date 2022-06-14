@@ -39,8 +39,8 @@ meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
 def create_structure_line(chap: int, group: int, num: int) -> List[List]:
     return [[gui.Input(key=f"structure-{chap}-{group}-{num}"),
              gui.Input("Thema", key=f"structure-name-{chap}-{group}-{num}"),
-             gui.DropDown(["EXTRA", "SKIPPABLE", "IMPORTANT", "MANDATORY"],
-                          key=f"structure-weight-{chap}-{group}-{num}")]]
+             gui.DropDown(["EXTRA", "SKIPPABLE", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
+                          key=f"structure-relevance-{chap}-{group}-{num}")]]
 
 
 def create_new_group(chap: int, group: int) -> List[List]:
@@ -52,9 +52,10 @@ def create_new_group(chap: int, group: int) -> List[List]:
                        layout_group, key=f"Frame-group-{chap}-{group}")]]
 
 
-def create_new_chapter(chap: int) -> List[List]:
+def create_new_chapter(chap: int, weight: float) -> List[List]:
     layout_chapter = [
-        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"), gui.Button("Update", key=f"chapter-{chap}-update")],
+        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"), gui.Button("Update", key=f"chapter-{chap}-update"),
+         gui.Text("Gewicht"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight")],
         [gui.HSeparator()], create_new_group(chap, 1)[0]]
     return [[gui.Frame(f"Kapitel {chap}",
                        layout_chapter, key=f"Frame-chapter-{chap}")]]
@@ -73,7 +74,7 @@ def add_chapter(window: gui.Window):
     frame: gui.Frame
     frame = window.find_element("Structure-Frame")
     chapter_num = len(frame.Widget.children)
-    window.extend_layout(frame, create_new_chapter(chapter_num + 1))
+    window.extend_layout(frame, create_new_chapter(chapter_num + 1, .5))
     window.refresh()
 
 
@@ -94,11 +95,29 @@ def export_to_json(values: dict[str, any]):
     year = int(year) if year != "" else 0
     values["meta-year-input"] = year
     keys = list(values.keys())
-    meta_keys = [key for key in keys if "meta" in key]
+
+    # ------------------META-PART------------------
+    meta_keys = [key for key in keys if "meta" in key and key.startswith("meta-extra")]
+    extra_meta_keys = [key for key in keys if key.startswith("meta-extra")]
     meta_object = {}
+    meta_groups = dict()
+    extra_metas = []
+
+    for key in extra_meta_keys:
+        key_num = re.search(r"\d+", key)
+        if key_num is not None:
+            key_num = int(key_num.group(0))
+            if key_num not in meta_groups:
+                meta_groups[key_num] = []
+            meta_groups[key_num].append(key)
+    for group, group_keys in meta_groups.items():
+        extra_metas.append({"name": values[group_keys[0]], "value": values[group_keys[1]]})
+
     for i in meta_keys:
         meta_object[i.removeprefix("meta-").removesuffix("-input")] = values[i]
-    structure_keys = [key for key in keys if "chapter" in key or "structure" in key]
+    meta_object["extra"] = extra_metas
+
+    # -------------------------CONTENT-PART---------------------
 
     goal_keys = [key for key in keys if "goal" in key]
     # group by number
@@ -115,7 +134,8 @@ def export_to_json(values: dict[str, any]):
                 "completeSentence": values[elements[2]]}
         goals[goal["key"]] = goal
 
-    # Add structure
+    # ------------------------STRUCTURE-PART---------------------
+
     structure_keys = [key for key in keys if "chapter" in key or "structure" in key or "group" in key]
     chapter_keys = [key for key in structure_keys if "chapter" in key]
     structure = []
@@ -128,21 +148,22 @@ def export_to_json(values: dict[str, any]):
             chapter_groups[num] = []
         chapter_groups[num].append(key)
     for i, elements in chapter_groups.items():
-        chapter = {"key": f"chapter-{i}", "name": values[elements[0]], "groups": []}
+        chapter = {"key": f"chapter-{i}", "name": values[elements[0]], "weight": float(values[elements[1]]),
+                   "groups": []}
         chapters.append(chapter)
 
     # groups
     group_keys = [key for key in structure_keys if "group" in key]
     group_dict = {}
     for key in group_keys:
-        id = key.removeprefix("group-").removesuffix("-name")
-        if id not in group_dict.keys():
-            group_dict[id] = []
-        group_dict[id].append(key)
+        id_num = key.removeprefix("group-").removesuffix("-name")
+        if id_num not in group_dict.keys():
+            group_dict[id_num] = []
+        group_dict[id_num].append(key)
     for i, elements in group_dict.items():
-        group = {"key": elements[0], "name": values[elements[0]], "lines": []}
-        chapter = int(elements[0].split("-")[1])
-        chapter = chapters[chapter - 1]
+        group = {"key": elements[0], "name": values[elements[0]], "lines": list()}
+        chapter_num = int(elements[0].split("-")[1])
+        chapter = chapters[chapter_num - 1]
         chapter["groups"].append(group)
 
     # lines
@@ -150,10 +171,10 @@ def export_to_json(values: dict[str, any]):
     line_groups = {}
     for key in line_keys:
         id_with_suffix = key.removeprefix("structure-")
-        id = re.search(r"\d+-\d+-\d+", id_with_suffix)
-        if id not in line_groups.keys():
-            line_groups[id] = []
-        line_groups[id].append(key)
+        id_num = re.search(r"\d+-\d+-\d+", id_with_suffix).group(0)
+        if id_num not in line_groups.keys():
+            line_groups[id_num] = []
+        line_groups[id_num].append(key)
     for i, elements in line_groups.items():
         line = {"key": values[elements[0]]}  # TODO add wenn emhr bekannt
         chapter_num = int(elements[0].split("-")[1])
@@ -201,8 +222,11 @@ def get_last_chapter(window: gui.Window) -> gui.Frame:
     return chapter
 
 
+extra_meta_count = 0
+
+
 def run_new(window: gui.Window):
-    global goal_count, chapter_count
+    global goal_count, chapter_count, extra_meta_count
     goal_count = 1
     chapter_count = 1
     event: str
@@ -213,7 +237,9 @@ def run_new(window: gui.Window):
             break
         elif event == new_meta_line:
             frame = get_element(window, "Meta-Frame")
-            line = [[gui.Text("hallo"), gui.Input()]]
+            extra_meta_count += 1
+            line = [[gui.Input("Information", key=f"meta-extra-{extra_meta_count}-name"),
+                     gui.Input("Wert", key=f"meta-extra-{extra_meta_count}-value")]]
             add_line_in_frame(window, frame, line)
         elif event == new_content_line:
             frame = get_element(window, "Content-Frame")
@@ -247,9 +273,10 @@ new_layout = [[gui.Text("Bitte füllen Sie die folgenden Felder aus")],
               [gui.HSeparator()],
               [gui.Frame("Inhalt", inhalt_layout, key="Content-Frame")],
               [gui.HSeparator()],
-              [gui.Frame("Struktur", create_new_chapter(1), key="Structure-Frame")],
+              [gui.Frame("Struktur", create_new_chapter(1, 0.5), key="Structure-Frame")],
               [gui.Frame("Absätze",
                          [[gui.Button("Gruppe", key="New-Group"), gui.Button("Kapitel", key="new-chapter")]])],
+              [gui.HSeparator()],
               [gui.Button("Erstellen!", key="Create-New"), gui.Input("Plan.json", key="create-file-name")]
               ]
 

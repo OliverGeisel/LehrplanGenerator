@@ -1,3 +1,4 @@
+import pathlib
 from typing import List
 
 import PySimpleGUI as gui
@@ -13,8 +14,12 @@ def get_element(window: gui.Window, element_key: str):
     return window.find_element(element_key)
 
 
+icon_path = pathlib.Path("./res/icon/favicon.ico")
+
+
 def crate_main():
-    window = gui.Window(title="Lehrplan Konfiguration", layout=start_layout)
+    window = gui.Window(title="Lehrplan Konfiguration", layout=start_layout)#, icon=str(icon_path),
+                        #use_custom_titlebar=True, titlebar_icon=str(icon_path))
     return window
 
 
