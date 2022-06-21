@@ -10,7 +10,11 @@ def run():
     window.close()  # todo überdenken
     if event == "Neuer Plan":
         second_window = createNew.create_new()
-        createNew.run_new(second_window)
+        try:
+            createNew.run_new(second_window)
+        except:
+            input("Achtung Fehler!")
+            # gui.popup_error("Fehler!")
     elif event == "Öffne File":
         file = maingui.popup_import()
         with open(file) as plan:

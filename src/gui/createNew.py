@@ -11,6 +11,7 @@ new_content_line = "New-Content-Line"
 new_goal_line = "New-Goal-Line"
 new_meta_line = "New-Meta-Line"
 new_group = "New-Group"
+new_task = "new-task"
 
 
 def create_goal_line(num: int):
@@ -119,7 +120,7 @@ def export_to_json(values: dict[str, any]):
 
     # -------------------------CONTENT-PART---------------------
 
-    goal_keys = [key for key in keys if "goal" in key]
+    goal_keys = [key for key in keys if key.startswith("goal")]
     # group by number
     goal_groups = {}
     for key in goal_keys:
@@ -223,10 +224,11 @@ def get_last_chapter(window: gui.Window) -> gui.Frame:
 
 
 extra_meta_count = 0
+content_count = 0
 
 
 def run_new(window: gui.Window):
-    global goal_count, chapter_count, extra_meta_count
+    global goal_count, content_count, chapter_count, extra_meta_count
     goal_count = 1
     chapter_count = 1
     event: str
@@ -243,22 +245,30 @@ def run_new(window: gui.Window):
             add_line_in_frame(window, frame, line)
         elif event == new_content_line:
             frame = get_element(window, "Content-Frame")
-            line = [[gui.Input(), gui.Input()]]
+            content_count += 1
+            line = [[gui.Input(key=f"content-{goal_count}-goal"), gui.Input(key=f"content-{goal_count}-description")]]
             add_line_in_frame(window, frame, line)
-        elif event == new_group:
-            chapter = get_last_chapter(window)
-            grop_count = len(chapter.Widget.children) - 2
-            group = create_new_group(chapter_count, grop_count + 1)
-
-            add_line_in_frame(window, chapter, group)
-        elif event == "new-chapter":
-            add_chapter(window)
-            chapter_count += 1
         elif event == new_goal_line:
             frame = get_element(window, "Content-Frame")
             goal_count += 1
             line = create_goal_line(goal_count)
             add_line_in_frame(window, frame, [line])
+        elif event == new_task:
+            chapter = get_last_chapter(window)
+            grop_count = len(chapter.Widget.children) - 2
+            chap_num = chapter.key.split("-")[2]
+            group = window.find_element(f"Frame-group-{chap_num}-{grop_count}")
+            line_num = len(group.Widget.children) - 1
+            line = create_structure_line(chap_num, grop_count, line_num)
+            add_line_in_frame(window, group, line)
+        elif event == new_group:
+            chapter = get_last_chapter(window)
+            grop_count = len(chapter.Widget.children) - 2
+            group = create_new_group(chapter_count, grop_count + 1)
+            add_line_in_frame(window, chapter, group)
+        elif event == "new-chapter":
+            add_chapter(window)
+            chapter_count += 1
         elif event == "Create-New":
             export_to_json(value)
         elif re.match(r"chapter-\d+-update", event):
@@ -275,7 +285,8 @@ new_layout = [[gui.Text("Bitte füllen Sie die folgenden Felder aus")],
               [gui.HSeparator()],
               [gui.Frame("Struktur", create_new_chapter(1, 0.5), key="Structure-Frame")],
               [gui.Frame("Absätze",
-                         [[gui.Button("Gruppe", key="New-Group"), gui.Button("Kapitel", key="new-chapter")]])],
+                         [[gui.Button("Aufgabe", key="new-task"), gui.Button("Gruppe", key="New-Group"),
+                           gui.Button("Kapitel", key="new-chapter")]])],
               [gui.HSeparator()],
               [gui.Button("Erstellen!", key="Create-New"), gui.Input("Plan.json", key="create-file-name")]
               ]

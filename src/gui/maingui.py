@@ -18,8 +18,8 @@ icon_path = pathlib.Path("./res/icon/favicon.ico")
 
 
 def crate_main():
-    window = gui.Window(title="Lehrplan Konfiguration", layout=start_layout)#, icon=str(icon_path),
-                        #use_custom_titlebar=True, titlebar_icon=str(icon_path))
+    window = gui.Window(title="Lehrplan Konfiguration", layout=start_layout)  # , icon=str(icon_path),
+    # use_custom_titlebar=True, titlebar_icon=str(icon_path))
     return window
 
 
@@ -37,7 +37,10 @@ def create_edit(jsonContent):
 
 
 def run_edit(window: gui.Window):
-    while True:
-        event, values = window.read()
-        if event == gui.WIN_CLOSED:
-            break
+    try:
+        while True:
+            event, values = window.read()
+            if event == gui.WIN_CLOSED:
+                break
+    except:
+        gui.popup_error("Fehler!")
