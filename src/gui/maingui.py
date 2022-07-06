@@ -32,7 +32,9 @@ def popup_import():
     return gui.popup_get_file("Plan der geöffnet werden soll!", "Öffnen", "./plan.json")
 
 
-def create_edit(jsonContent):
+def create_edit(jsonContent: dict):
+    meta = jsonContent["meta"]
+
     return gui.Window("Edit", [[]])
 
 
