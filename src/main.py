@@ -8,14 +8,14 @@ def run():
     window = maingui.crate_main()
     event, values = window.read()
     window.close()  # todo überdenken
-    if event == "Neuer Plan":
+    if event == maingui.new_plan:
         second_window = createNew.create_new()
         try:
             createNew.run_new(second_window)
         except:
-            input("Achtung Fehler!")
+            input("Achtung Fehler! Kontrolliere und drücke Enter!")
             # gui.popup_error("Fehler!")
-    elif event == "Öffne File":
+    elif event == maingui.open_file:
         file = maingui.popup_import()
         with open(file) as plan:
             content = plan.read()

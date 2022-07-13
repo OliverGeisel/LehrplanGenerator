@@ -46,10 +46,10 @@ inhalt_layout = [create_goal(1)[0],
 
 
 def create_structure_line(chap: int, group: int, num: int) -> List[List]:
-    return [[gui.Input(key=f"structure-{chap}-{group}-{num}"),
-             gui.Input("Thema", key=f"structure-name-{chap}-{group}-{num}"),
-             gui.DropDown(["EXTRA", "SKIPPABLE", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
-                          key=f"structure-relevance-{chap}-{group}-{num}"),
+    return [[gui.Input(key=f"structure-{chap}-{group}-{num}-name"),
+             gui.Input("Thema", key=f"structure-{chap}-{group}-{num}-topic"),
+             gui.DropDown(["INFORMATIONAL", "OPTIONAL", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
+                          key=f"structure-{chap}-{group}-{num}-relevance"),
              gui.Column([[gui.Frame(f"Alternativen",
                                     [[gui.Button("Alternativen", key=f"structure-{chap}-{group}-{num}-alternative")]],
                                     key=f"Frame-structure-{chap}-{group}-{num}-alternative")]])]]
@@ -95,12 +95,22 @@ def create_new_chapter(chap: int, weight: float) -> List[List]:
                        layout_chapter, key=f"Frame-chapter-{chap}")]]
 
 
+def update_group(window: gui.Window, chapter, group):
+    frame: gui.Frame
+    frame = window.find_element(f"Frame-group-{chapter}-{group}")
+    name: gui.Input
+    name = frame.Rows[0][0].get()
+    frame.update(name)
+    window.refresh()
+
+
 def update_chapter(window: gui.Window, chapter: int):
     frame: gui.Frame
     frame = window.find_element(f"Frame-chapter-{chapter}")
     name: gui.Input
     name = frame.Rows[0][0].get()
-    frame.Title = name
+    frame.update(name)
+    # frame.Title = name
     window.refresh()
 
 
@@ -138,7 +148,6 @@ def export_to_json(values: dict[str, any]):
     keys = list(values.keys())
 
     # ------------------META-PART------------------
-    meta_keys = [key for key in keys if "meta" in key]
     extra_meta_keys = [key for key in keys if key.startswith("meta-extra")]
     normal_meta_keys = [key for key in keys if key.startswith("meta-") and key.endswith("input")]
     meta_object = {}
@@ -153,7 +162,8 @@ def export_to_json(values: dict[str, any]):
                 meta_groups[key_num] = []
             meta_groups[key_num].append(key)
     for group, group_keys in meta_groups.items():
-        extra_metas.append({"name": values[group_keys[0]], "value": values[group_keys[1]]})
+        extra_metas.append({"name": values[group_keys[0]],
+                            "value": values[group_keys[1]]})
 
     for key in normal_meta_keys:
         meta_object[key.removeprefix("meta-").removesuffix("-input")] = values[key]
@@ -175,9 +185,11 @@ def export_to_json(values: dict[str, any]):
         content_elements = []
         for content_key in elements[3:]:
             content_elements.append(values[content_key])
-            pass
-        goal = {"key": f"goal-{key}", "expression": values[elements[0]], "target": values[elements[1]],
-                "completeSentence": values[elements[2]], "content": content_elements}
+        goal = {"key": f"goal-{key}",
+                "expression": values[elements[0]],
+                "target": values[elements[1]],
+                "completeSentence": values[elements[2]],
+                "content": content_elements}
         goals[goal["key"]] = goal
 
     # ------------------------STRUCTURE-PART---------------------
@@ -195,7 +207,9 @@ def export_to_json(values: dict[str, any]):
             chapter_groups[num] = []
         chapter_groups[num].append(key)
     for key, elements in chapter_groups.items():
-        chapter = {"key": f"chapter-{key}", "name": values[elements[0]], "weight": float(values[elements[1]]),
+        chapter = {"key": f"chapter-{key}",
+                   "name": values[elements[0]],
+                   "weight": float(values[elements[1]]),
                    "alternatives": [values[elem] for elem in elements[2:]],
                    "groups": []}
         # todo skipp empty alternatives
@@ -203,22 +217,24 @@ def export_to_json(values: dict[str, any]):
 
     # groups
     group_keys = [key for key in structure_keys if "group" in key]
-    group_dict = {}
+    group_dict: dict[str, list[str]] = {}
     for key in group_keys:
         id_num = re.search(r"group-(\d+-\d+)", key).group(1)
         if id_num not in group_dict.keys():
             group_dict[id_num] = []
         group_dict[id_num].append(key)
     for key, elements in group_dict.items():
-        group = {"key": elements[0], "name": values[elements[0]],
-                 "alternatives": [values[elem] for elem in elements[1:]], "lines": list()}
+        group = {"key": elements[0].removesuffix("-name"),
+                 "name": values[elements[0]],
+                 "alternatives": [values[elem] for elem in elements[1:]],
+                 "lines": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
         chapter["groups"].append(group)
 
     # lines
     line_keys = [key for key in structure_keys if "structure" in key]
-    line_groups = {}
+    line_groups: dict[str, list[str]] = {}
     for key in line_keys:
         id_with_suffix = key.removeprefix("structure-")
         id_num = re.search(r"\d+-\d+-\d+", id_with_suffix).group(0)
@@ -226,10 +242,11 @@ def export_to_json(values: dict[str, any]):
             line_groups[id_num] = []
         line_groups[id_num].append(key)
     for key, elements in line_groups.items():
-        line = {"key": values[elements[0]],
-                "Thema": values[elements[1]],
-                "Importance": values[elements[2]],
-                "alternatives": [values[elem] for elem in elements[3:]]}  # TODO add wenn mehr bekannt
+        line = {"key": elements[0].removesuffix("-name"),
+                "name": values[elements[0]],
+                "topic": values[elements[1]],
+                "relevance": values[elements[2]],
+                "alternatives": [values[elem] for elem in elements[3:]]}
         chapter_num = int(elements[0].split("-")[1])
         chapter = chapters[chapter_num - 1]
         group_num = int(elements[0].split("-")[2])
@@ -268,6 +285,7 @@ def export_to_json(values: dict[str, any]):
 
 goal_count = 0
 chapter_count = 0
+
 extra_meta_count = 0
 
 
@@ -293,7 +311,7 @@ def run_new(window: gui.Window):
             extra_meta_count += 1
             line = [[gui.Input("Information", key=f"meta-extra-{extra_meta_count}-name"),
                      gui.Input("Wert", key=f"meta-extra-{extra_meta_count}-value")]]
-            add_line_in_frame(window, frame, line)
+            window.extend_layout(frame, line)
         # add content in selected goal
         elif re.match(add_content_re, event):
             num = event.split("-")[-1]
@@ -301,13 +319,13 @@ def run_new(window: gui.Window):
             content_num = len(frame.Widget.children) - 1
             line = [
                 [gui.Input(str(content_num), key=f"goal-content-{num}-{content_num}")]]
-            add_line_in_frame(window, frame, line)
+            window.extend_layout(frame, line)
         # add goal
         elif event == new_goal:
             content_frame = get_element(window, "value-frame")
             goal_count += 1
             goal_frame = create_goal(goal_count)
-            add_line_in_frame(window, content_frame, goal_frame)
+            window.extend_layout(content_frame, goal_frame)
         # add task (step) in chapter/group
         elif event == new_task:
             chapter = get_last_chapter(window)
@@ -316,7 +334,7 @@ def run_new(window: gui.Window):
             group = window.find_element(f"Frame-group-{chap_num}-{grop_count}")
             line_num = len(group.Widget.children) - 1
             line = create_structure_line(chap_num, grop_count, line_num)
-            add_line_in_frame(window, group, line)
+            window.extend_layout(group, line)
         elif re.match(r"structure-\d+-\d+-\d+-alternative", event):
             chapter = event.split("-")[1]
             chapter = int(chapter)
@@ -328,7 +346,14 @@ def run_new(window: gui.Window):
             chapter = get_last_chapter(window)
             grop_count = len(chapter.Widget.children) - 2
             group = create_new_group(chapter_count, grop_count + 1)
-            add_line_in_frame(window, chapter, group)
+            window.extend_layout(chapter, group)
+        # rename group
+        elif re.match(r"group-\d+-\d+-update", event):
+            chapter = event.split("-")[1]
+            chapter = int(chapter)
+            group = int(event.split("-")[2])
+            update_group(window, chapter, group)
+        # add new group alternative
         elif re.match(r"group-\d+-\d+-alternative", event):
             chapter = event.split("-")[1]
             chapter = int(chapter)

@@ -3,10 +3,13 @@ from typing import List
 
 import PySimpleGUI as gui
 
+new_plan = "Neuer Plan"
+open_file = "Öffne File"
+
 start_layout = [[gui.Text("Willkommen. Bitte wählen Sie aus!")],
                 [gui.Text("Neuen Plan erstellnen"), gui.HSeparator(color=gui.DEFAULT_BACKGROUND_COLOR),
-                 gui.Button("Neuer Plan")],
-                [gui.Text("Bearbeiten"), gui.Button("Öffne File")]
+                 gui.Button(new_plan)],
+                [gui.Text("Bearbeiten"), gui.Button(open_file)]
                 ]
 
 
@@ -32,17 +35,4 @@ def popup_import():
     return gui.popup_get_file("Plan der geöffnet werden soll!", "Öffnen", "./plan.json")
 
 
-def create_edit(jsonContent: dict):
-    meta = jsonContent["meta"]
 
-    return gui.Window("Edit", [[]])
-
-
-def run_edit(window: gui.Window):
-    try:
-        while True:
-            event, values = window.read()
-            if event == gui.WIN_CLOSED:
-                break
-    except:
-        gui.popup_error("Fehler!")
