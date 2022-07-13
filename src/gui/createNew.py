@@ -7,7 +7,7 @@ import PySimpleGUI as gui
 
 from courseplan import CoursePlan
 
-new_content_line = "New-Content-Line"
+new_content_task = "New-Content-Task"
 new_goal = "New-Goal-Line"
 new_meta_line = "New-Meta-Line"
 new_chapter = "New-Chapter"
@@ -50,24 +50,24 @@ def create_goal(num: int) -> List[List]:
 
 
 inhalt_layout = [[gui.Column(create_goal(1), key="column-goals")],
-                 [gui.Button("Weiters Ziel", key=new_goal)]]  # gui.Button("Weiteren Inhalt", key=new_content_line)
+                 [gui.Button("Weiters Ziel", key=new_goal)]]
 
 
-def create_new_structure_line(chap: int, group: int, num: int) -> List[List]:
-    return [[gui.Input(key=f"structure-{chap}-{group}-{num}-name"),
-             gui.Input("Thema", key=f"structure-{chap}-{group}-{num}-topic"),
+def create_new_structure_task(chap: int, group: int, num: int) -> List[List]:
+    return [[gui.Input(key=f"task-{chap}-{group}-{num}-name"),
+             gui.Input("Thema", key=f"task-{chap}-{group}-{num}-topic"),
              gui.DropDown(["INFORMATIONAL", "OPTIONAL", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
-                          key=f"structure-{chap}-{group}-{num}-relevance"),
+                          key=f"task-{chap}-{group}-{num}-relevance"),
              gui.Column([[gui.Frame(f"Alternativen",
-                                    [[gui.Button("Alternativen", key=f"structure-{chap}-{group}-{num}-alternative")]],
-                                    key=f"Frame-structure-{chap}-{group}-{num}-alternative")]])]]
+                                    [[gui.Button("Alternativen", key=f"task-{chap}-{group}-{num}-alternative")]],
+                                    key=f"Frame-task-{chap}-{group}-{num}-alternative")]])]]
 
 
-def add_structure_alternative(window: gui.Window, chapter: int, group, structure: int):
-    frame: gui.Frame = window.find_element(f"Frame-structure-{chapter}-{group}-{structure}-alternative")
+def add_structure_task_alternative(window: gui.Window, chapter: int, group: int, task: int):
+    frame: gui.Frame = window.find_element(f"Frame-task-{chapter}-{group}-{task}-alternative")
     num = len(frame.widget.children)
     new_alternative_line = [
-        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"structure-{chapter}-{group}-{structure}-alternative-{num}")]]
+        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"task-{chapter}-{group}-{task}-alternative-{num}")]]
     window.extend_layout(frame, new_alternative_line)
     window.refresh()
 
@@ -78,7 +78,7 @@ def create_new_group(chap: int, group: int) -> List[List]:
          gui.Button("Update", key=f"group-{chap}-{group}-update")],
         [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"group-{chap}-{group}-alternative")]],
                    key=f"Frame-group-{chap}-{group}-alternative")],
-        [gui.HSeparator()], create_new_structure_line(chap, group, 1)[0]]
+        [gui.HSeparator()], create_new_structure_task(chap, group, 1)[0]]
     return [[gui.Frame(f"Gruppe {chap}-{group}",
                        layout_group, key=f"Frame-group-{chap}-{group}")]]
 
@@ -194,7 +194,7 @@ def export_to_json(values: dict[str, any]):
 
     # ------------------------STRUCTURE-PART---------------------
 
-    structure_keys = [key for key in keys if "chapter" in key or "structure" in key or "group" in key]
+    structure_keys = [key for key in keys if "chapter" in key or "group" in key or "task" in key]
     chapter_keys = [key for key in structure_keys if "chapter" in key]
     structure = []
     chapters: list[dict] = []
@@ -227,22 +227,22 @@ def export_to_json(values: dict[str, any]):
         group = {"key": elements[0].removesuffix("-name"),
                  "name": values[elements[0]],
                  "alternatives": [values[elem] for elem in elements[1:]],
-                 "lines": list()}
+                 "tasks": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
         chapter["groups"].append(group)
 
-    # lines
-    line_keys = [key for key in structure_keys if "structure" in key]
-    line_groups: dict[str, list[str]] = {}
-    for key in line_keys:
-        id_with_suffix = key.removeprefix("structure-")
+    # tasks
+    task_keys = [key for key in structure_keys if "task" in key]
+    task_groups: dict[str, list[str]] = {}
+    for key in task_keys:
+        id_with_suffix = key.removeprefix("task-")
         id_num = re.search(r"\d+-\d+-\d+", id_with_suffix).group(0)
-        if id_num not in line_groups.keys():
-            line_groups[id_num] = []
-        line_groups[id_num].append(key)
-    for key, elements in line_groups.items():
-        line = {"key": elements[0].removesuffix("-name"),
+        if id_num not in task_groups.keys():
+            task_groups[id_num] = []
+        task_groups[id_num].append(key)
+    for key, elements in task_groups.items():
+        task = {"key": elements[0].removesuffix("-name"),
                 "name": values[elements[0]],
                 "topic": values[elements[1]],
                 "relevance": values[elements[2]],
@@ -251,7 +251,7 @@ def export_to_json(values: dict[str, any]):
         chapter = chapters[chapter_num - 1]
         group_num = int(elements[0].split("-")[2])
         group = chapter["groups"][group_num - 1]
-        group["lines"].append(line)
+        group["tasks"].append(task)
 
     # add all
     structure.extend(chapters)
@@ -302,7 +302,7 @@ def get_chapter_group_num(key: str) -> tuple[int, int]:
     return get_chapter_num(key), int(key.split("-")[2])
 
 
-def get_chapter_group_structure_num(key: str) -> tuple[int, int, int]:
+def get_chapter_group_task_num(key: str) -> tuple[int, int, int]:
     chapter = key.split("-")[1]
     chapter = int(chapter)
     group = int(key.split("-")[2])
@@ -343,13 +343,13 @@ def run_new(window: gui.Window):
             group_num = len(chapter.Widget.children) - 3
             chap_num = chapter.key.split("-")[2]
             group = window.find_element(f"Frame-group-{chap_num}-{group_num}")
-            new_line_num = len(group.Widget.children) - 2
-            line = create_new_structure_line(chap_num, group_num, new_line_num)
+            new_task_num = len(group.Widget.children) - 2
+            line = create_new_structure_task(chap_num, group_num, new_task_num)
             window.extend_layout(group, line)
             del group_num, chap_num
-        # add structure alternative
-        elif re.match(r"structure-\d+-\d+-\d+-alternative", event):
-            add_structure_alternative(window, *get_chapter_group_structure_num(event))
+        # add task alternative
+        elif re.match(r"task-\d+-\d+-\d+-alternative", event):
+            add_structure_task_alternative(window, *get_chapter_group_task_num(event))
         # add new group in selected chapter
         elif event == new_group:
             chapter = get_last_chapter_frame(window)
