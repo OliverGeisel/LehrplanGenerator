@@ -15,21 +15,6 @@ new_group = "New-Group"
 new_task = "New-Task"
 create_new_file = "Create-New"
 
-
-def create_goal(num: int) -> List[List]:
-    layout = list()
-    layout.append([gui.DropDown(values=["First-Look", "Know", "Translate", "Control", "Use", "Comment", "Create"],
-                                default_value=["Know"],
-                                key=f"goal-expression-{num}"), gui.Input("MasterKey-Word", key=f"goal-word-{num}"),
-                   gui.MLine("Complete text!", size=(45, 2), key=f"goal-complete-{num}")]
-                  )
-    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}")])
-    layout.append(
-        [gui.Input(str(1), key=f"goal-content-{num}-{1}")])
-
-    return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}")]]
-
-
 meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
                [gui.Text("Beschreibung:"),
                 gui.MLine(key="meta-description-input", size=(45, 5), auto_size_text=True, auto_refresh=True,
@@ -41,11 +26,24 @@ meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
                [gui.Button("Zusätzliche Info", key="New-Meta-Line")]
                ]
 
+
+def create_goal(num: int) -> List[List]:
+    layout = list()
+    layout.append([gui.DropDown(values=["First-Look", "Know", "Translate", "Control", "Use", "Comment", "Create"],
+                                default_value=["Know"],
+                                key=f"goal-expression-{num}"), gui.Input("MasterKey-Word", key=f"goal-word-{num}"),
+                   gui.MLine("Complete text!", size=(45, 2), key=f"goal-complete-{num}")])
+    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}")])
+    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}")])
+
+    return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}")]]
+
+
 inhalt_layout = [create_goal(1)[0],
                  [gui.Button("Weiters Ziel", key=new_goal)]]  # gui.Button("Weiteren Inhalt", key=new_content_line)
 
 
-def create_structure_line(chap: int, group: int, num: int) -> List[List]:
+def create_new_structure_line(chap: int, group: int, num: int) -> List[List]:
     return [[gui.Input(key=f"structure-{chap}-{group}-{num}-name"),
              gui.Input("Thema", key=f"structure-{chap}-{group}-{num}-topic"),
              gui.DropDown(["INFORMATIONAL", "OPTIONAL", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
@@ -70,9 +68,18 @@ def create_new_group(chap: int, group: int) -> List[List]:
          gui.Button("Update", key=f"group-{chap}-{group}-update")],
         [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"group-{chap}-{group}-alternative")]],
                    key=f"Frame-group-{chap}-{group}-alternative")],
-        [gui.HSeparator()], create_structure_line(chap, group, 1)[0]]
+        [gui.HSeparator()], create_new_structure_line(chap, group, 1)[0]]
     return [[gui.Frame(f"Gruppe {chap}-{group}",
                        layout_group, key=f"Frame-group-{chap}-{group}")]]
+
+
+def update_group(window: gui.Window, chapter, group):
+    frame: gui.Frame
+    frame = window.find_element(f"Frame-group-{chapter}-{group}")
+    name: gui.Input
+    name = frame.Rows[0][0].get()
+    frame.update(name)
+    window.refresh()
 
 
 def add_group_alternative(window: gui.Window, chapter: int, group):
@@ -95,12 +102,11 @@ def create_new_chapter(chap: int, weight: float) -> List[List]:
                        layout_chapter, key=f"Frame-chapter-{chap}")]]
 
 
-def update_group(window: gui.Window, chapter, group):
+def add_chapter(window: gui.Window):
     frame: gui.Frame
-    frame = window.find_element(f"Frame-group-{chapter}-{group}")
-    name: gui.Input
-    name = frame.Rows[0][0].get()
-    frame.update(name)
+    frame = window.find_element("Structure-Frame")
+    chapter_num = len(frame.Widget.children)
+    window.extend_layout(frame, create_new_chapter(chapter_num + 1, 2))
     window.refresh()
 
 
@@ -121,22 +127,6 @@ def add_chapter_alternative(window: gui.Window, chapter: int):
         [gui.Text(f"Alternative-{num + 1}"), gui.Input(key=f"chapter-{chapter}-alternative-{num + 1}")]]
     window.extend_layout(frame, new_alternative_line)
     window.refresh()
-
-
-def add_chapter(window: gui.Window):
-    frame: gui.Frame
-    frame = window.find_element("Structure-Frame")
-    chapter_num = len(frame.Widget.children)
-    window.extend_layout(frame, create_new_chapter(chapter_num + 1, 2))
-    window.refresh()
-
-
-def add_line_in_frame(window: gui.Window, frame: gui.Frame, line: List[List]):
-    window.extend_layout(frame, line)
-
-
-def get_element(window: gui.Window, element_key: str):
-    return window.find_element(element_key)
 
 
 def export_to_json(values: dict[str, any]):
@@ -285,13 +275,28 @@ def export_to_json(values: dict[str, any]):
 
 goal_count = 0
 chapter_count = 0
-
 extra_meta_count = 0
 
 
-def get_last_chapter(window: gui.Window) -> gui.Frame:
-    chapter = get_element(window, f"Frame-chapter-{chapter_count}")
+def get_last_chapter_frame(window: gui.Window) -> gui.Frame:
+    chapter = window.find_element(f"Frame-chapter-{chapter_count}")
     return chapter
+
+
+def get_chapter_num(key: str) -> int:
+    chapter = key.split("-")[1]
+    return int(chapter)
+
+
+def get_chapter_group_num(key: str) -> tuple[int, int]:
+    return get_chapter_num(key), int(key.split("-")[2])
+
+
+def get_chapter_group_structure_num(key: str) -> tuple[int, int, int]:
+    chapter = key.split("-")[1]
+    chapter = int(chapter)
+    group = int(key.split("-")[2])
+    return chapter, group, int(key.split("-")[3])
 
 
 def run_new(window: gui.Window):
@@ -299,82 +304,79 @@ def run_new(window: gui.Window):
     goal_count = 1
     chapter_count = 1
     event: str
-    add_content_re = r"new-inhalt-\d+"
+    n = 1
     while True:
         window.refresh()
         event, value = window.read()
         if event in [gui.WIN_CLOSE_ATTEMPTED_EVENT, gui.WIN_CLOSED]:
             break
-        # add meta line
+        # add extra meta line
         elif event == new_meta_line:
-            frame = get_element(window, "meta-frame")
+            frame = window.find_element("meta-frame")
             extra_meta_count += 1
             line = [[gui.Input("Information", key=f"meta-extra-{extra_meta_count}-name"),
                      gui.Input("Wert", key=f"meta-extra-{extra_meta_count}-value")]]
             window.extend_layout(frame, line)
         # add content in selected goal
-        elif re.match(add_content_re, event):
+        elif re.match(r"new-inhalt-\d+", event):
             num = event.split("-")[-1]
-            frame = get_element(window, f"goal-frame-{num}")
+            frame = window.find_element(f"goal-frame-{num}")
             content_num = len(frame.Widget.children) - 1
             line = [
                 [gui.Input(str(content_num), key=f"goal-content-{num}-{content_num}")]]
             window.extend_layout(frame, line)
         # add goal
         elif event == new_goal:
-            content_frame = get_element(window, "value-frame")
+            content_frame = window.find_element("value-frame")
             goal_count += 1
             goal_frame = create_goal(goal_count)
             window.extend_layout(content_frame, goal_frame)
         # add task (step) in chapter/group
         elif event == new_task:
-            chapter = get_last_chapter(window)
-            grop_count = len(chapter.Widget.children) - 2
+            chapter = get_last_chapter_frame(window)
+            group_num = len(chapter.Widget.children) - 3
             chap_num = chapter.key.split("-")[2]
-            group = window.find_element(f"Frame-group-{chap_num}-{grop_count}")
-            line_num = len(group.Widget.children) - 1
-            line = create_structure_line(chap_num, grop_count, line_num)
+            group = window.find_element(f"Frame-group-{chap_num}-{group_num}")
+            new_line_num = len(group.Widget.children) - 2
+            line = create_new_structure_line(chap_num, group_num, new_line_num)
             window.extend_layout(group, line)
+            del group_num, chap_num
+        # add structure alternative
         elif re.match(r"structure-\d+-\d+-\d+-alternative", event):
-            chapter = event.split("-")[1]
-            chapter = int(chapter)
-            group = int(event.split("-")[2])
-            structure = int(event.split("-")[3])
-            add_structure_alternative(window, chapter, group, structure)
+            add_structure_alternative(window, *get_chapter_group_structure_num(event))
         # add new group in selected chapter
         elif event == new_group:
-            chapter = get_last_chapter(window)
-            grop_count = len(chapter.Widget.children) - 2
-            group = create_new_group(chapter_count, grop_count + 1)
+            chapter = get_last_chapter_frame(window)
+            group_num = len(chapter.Widget.children) - 3
+            group = create_new_group(chapter_count, group_num + 1)
             window.extend_layout(chapter, group)
+            del group_num
         # rename group
         elif re.match(r"group-\d+-\d+-update", event):
-            chapter = event.split("-")[1]
-            chapter = int(chapter)
-            group = int(event.split("-")[2])
-            update_group(window, chapter, group)
+            update_group(window, *get_chapter_group_num(event))
         # add new group alternative
         elif re.match(r"group-\d+-\d+-alternative", event):
-            chapter = event.split("-")[1]
-            chapter = int(chapter)
-            group = int(event.split("-")[2])
-            add_group_alternative(window, chapter, group)
-        # add chapter alternative
-        elif re.match(r"chapter-\d+-alternative", event):
-            chapter = event.split("-")[1]
-            chapter = int(chapter)
-            add_chapter_alternative(window, chapter)
+            add_group_alternative(window, *get_chapter_group_num(event))
         # add new chapter
         elif event == new_chapter:
             add_chapter(window)
             chapter_count += 1
+        # rename chapter
+        elif re.match(r"chapter-\d+-update", event):
+            update_chapter(window, get_chapter_num(event))
+        # add chapter alternative
+        elif re.match(r"chapter-\d+-alternative", event):
+            add_chapter_alternative(window, get_chapter_num(event))
         # export to json
         elif event == create_new_file:
             export_to_json(value)
-        elif re.match(r"chapter-\d+-update", event):
-            chapter = event.split("-")[1]
-            chapter = int(chapter)
-            update_chapter(window, chapter)
+        else:
+            window.close()
+            break
+        # trick to get full window with scrollbar
+        old_size = window.size
+        n *= -1
+        window.size = (old_size[0], old_size[1] + n)
 
 
 new_layout = [[gui.Text("Bitte füllen Sie die folgenden Felder aus")],
@@ -396,4 +398,4 @@ def create_new():
     return gui.Window("Neuer Plan", size=(1200, 750),
                       layout=[[gui.Column(layout=new_layout, size=(480, 600), expand_x=True, expand_y=True,
                                           scrollable=True, vertical_scroll_only=True, vertical_alignment="t")]],
-                      resizable=True)
+                      resizable=True, auto_size_text=True)
