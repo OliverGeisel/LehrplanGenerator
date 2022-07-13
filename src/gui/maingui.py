@@ -33,6 +33,3 @@ def add_line_in_frame(window: gui.Window, frame: gui.Frame, line: List[List]):
 
 def popup_import():
     return gui.popup_get_file("Plan der geöffnet werden soll!", "Öffnen", "./plan.json")
-
-
-

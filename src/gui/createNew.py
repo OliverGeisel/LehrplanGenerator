@@ -5,7 +5,7 @@ from typing import List
 
 import PySimpleGUI as gui
 
-from courseplan import courseplan
+from courseplan import CoursePlan
 
 new_content_line = "New-Content-Line"
 new_goal = "New-Goal-Line"
@@ -197,7 +197,7 @@ def export_to_json(values: dict[str, any]):
     structure_keys = [key for key in keys if "chapter" in key or "structure" in key or "group" in key]
     chapter_keys = [key for key in structure_keys if "chapter" in key]
     structure = []
-    chapters = []
+    chapters: list[dict] = []
     chapter_groups = {}
     # chapters
     # keys starts with chapter-{chapter_num}
@@ -269,7 +269,7 @@ def export_to_json(values: dict[str, any]):
         if back == "No":
             return
     with open(file_name, "w") as output_file:
-        course_plan = courseplan.CoursePlan(meta_object, goals, structure)
+        course_plan = CoursePlan(meta_object, goals, structure)
         output_file.write("{\n")
         for key, elem in enumerate(course_plan.getAll().items()):
             name = elem[0]
