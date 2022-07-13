@@ -15,6 +15,16 @@ new_group = "New-Group"
 new_task = "New-Task"
 create_new_file = "Create-New"
 
+
+def add_meta_line(window: gui.Window):
+    global extra_meta_count
+    frame = window.find_element("meta-frame")
+    extra_meta_count += 1
+    line = [[gui.Input("Information", key=f"meta-extra-{extra_meta_count}-name"),
+             gui.Input("Wert", key=f"meta-extra-{extra_meta_count}-value")]]
+    window.extend_layout(frame, line)
+
+
 meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
                [gui.Text("Beschreibung:"),
                 gui.MLine(key="meta-description-input", size=(45, 5), auto_size_text=True, auto_refresh=True,
@@ -39,7 +49,7 @@ def create_goal(num: int) -> List[List]:
     return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}")]]
 
 
-inhalt_layout = [create_goal(1)[0],
+inhalt_layout = [[gui.Column(create_goal(1), key="column-goals")],
                  [gui.Button("Weiters Ziel", key=new_goal)]]  # gui.Button("Weiteren Inhalt", key=new_content_line)
 
 
@@ -312,11 +322,7 @@ def run_new(window: gui.Window):
             break
         # add extra meta line
         elif event == new_meta_line:
-            frame = window.find_element("meta-frame")
-            extra_meta_count += 1
-            line = [[gui.Input("Information", key=f"meta-extra-{extra_meta_count}-name"),
-                     gui.Input("Wert", key=f"meta-extra-{extra_meta_count}-value")]]
-            window.extend_layout(frame, line)
+            add_meta_line(window)
         # add content in selected goal
         elif re.match(r"new-inhalt-\d+", event):
             num = event.split("-")[-1]
@@ -327,10 +333,10 @@ def run_new(window: gui.Window):
             window.extend_layout(frame, line)
         # add goal
         elif event == new_goal:
-            content_frame = window.find_element("value-frame")
+            goals_column = window.find_element("column-goals")
             goal_count += 1
             goal_frame = create_goal(goal_count)
-            window.extend_layout(content_frame, goal_frame)
+            window.extend_layout(goals_column, goal_frame)
         # add task (step) in chapter/group
         elif event == new_task:
             chapter = get_last_chapter_frame(window)
