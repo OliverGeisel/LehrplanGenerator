@@ -210,9 +210,8 @@ def export_to_json(values: dict[str, any]):
         chapter = {"key": f"chapter-{key}",
                    "name": values[elements[0]],
                    "weight": float(values[elements[1]]),
-                   "alternatives": [values[elem] for elem in elements[2:]],
+                   "knowledgeAreas": [values[elem] for elem in elements[2:] if values[elem] is not ""],
                    "groups": []}
-        # todo skipp empty alternatives
         chapters.append(chapter)
 
     # groups
@@ -226,7 +225,7 @@ def export_to_json(values: dict[str, any]):
     for key, elements in group_dict.items():
         group = {"key": elements[0].removesuffix("-name"),
                  "name": values[elements[0]],
-                 "alternatives": [values[elem] for elem in elements[1:]],
+                 "knowledgeAreas": [values[elem] for elem in elements[1:] if values[elem] is not ""],
                  "tasks": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
@@ -246,7 +245,7 @@ def export_to_json(values: dict[str, any]):
                 "name": values[elements[0]],
                 "topic": values[elements[1]],
                 "relevance": values[elements[2]],
-                "alternatives": [values[elem] for elem in elements[3:]]}
+                "knowledgeAreas": [values[elem] for elem in elements[3:] if values[elem] is not ""]}
         chapter_num = int(elements[0].split("-")[1])
         chapter = chapters[chapter_num - 1]
         group_num = int(elements[0].split("-")[2])

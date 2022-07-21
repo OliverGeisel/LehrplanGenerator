@@ -17,17 +17,16 @@ def run():
             # gui.popup_error("Fehler!")
     elif event == gui.open_file:
         file = gui.popup_import()
-        with open(file) as plan:
-            content = plan.read()
-            path = pathlib.Path(file)
-
-            fileLocation = path.parent
-            filename = path.name
-
-        decoder = json.JSONDecoder()
-        jsonContent = decoder.decode(content)
-        second_window = gui.create_edit(jsonContent)
-        gui.run_edit(second_window)
+        if file:
+            with open(file) as plan:
+                content = plan.read()
+                path = pathlib.Path(file)
+                fileLocation = path.parent
+                filename = path.name
+            decoder = json.JSONDecoder()
+            json_content = decoder.decode(content)
+            second_window = gui.create_edit(json_content, path)
+            gui.run_edit(second_window)
     else:
         window.close()
     window.close()
