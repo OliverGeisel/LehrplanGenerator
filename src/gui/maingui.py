@@ -3,10 +3,13 @@ from typing import List
 
 import PySimpleGUI as gui
 
+new_plan = "Neuer Plan"
+open_file = "Öffne File"
+
 start_layout = [[gui.Text("Willkommen. Bitte wählen Sie aus!")],
                 [gui.Text("Neuen Plan erstellnen"), gui.HSeparator(color=gui.DEFAULT_BACKGROUND_COLOR),
-                 gui.Button("Neuer Plan")],
-                [gui.Text("Bearbeiten"), gui.Button("Öffne File")]
+                 gui.Button(new_plan)],
+                [gui.Text("Bearbeiten"), gui.Button(open_file)]
                 ]
 
 
