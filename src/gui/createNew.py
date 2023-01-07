@@ -32,7 +32,9 @@ meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
                [gui.Text("Jahr:"), gui.Input(key="meta-year-input")],
                [gui.Text("Schultyp:"),
                 gui.DropDown(["Gymnasium", "Grundschule", "Realschule", "Universität", "Berufsschule"], ["Gymnasium"],
-                             key="meta-typ-input")],
+                             key="meta-type-input")],
+               [gui.Text("Stufe:"),
+                gui.InputText("Klasse X", key="meta-level-input")],
                [gui.Button("Zusätzliche Info", key="New-Meta-Line")]
                ]
 
@@ -43,8 +45,10 @@ def create_goal(num: int) -> List[List]:
                                 default_value=["Know"],
                                 key=f"goal-expression-{num}"), gui.Input("MasterKey-Word", key=f"goal-word-{num}"),
                    gui.MLine("Complete text!", size=(45, 2), key=f"goal-complete-{num}")])
-    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}")])
-    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}")])
+    layout.append(
+        [gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}",
+                    tooltip="Fügt ein Feld für weitere Inhalte, des Goals, hinzu")])
+    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}", tooltip="Inhalt des Goals")])
 
     return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}")]]
 
@@ -53,13 +57,16 @@ inhalt_layout = [[gui.Column(create_goal(1), key="column-goals")],
                  [gui.Button("Weiters Ziel", key=new_goal)]]
 
 
+# -------------- TASK ------------------------------------------------------
 def create_new_structure_task(chap: int, group: int, num: int) -> List[List]:
-    return [[gui.Input(key=f"task-{chap}-{group}-{num}-name"),
-             gui.Input("Thema", key=f"task-{chap}-{group}-{num}-topic"),
+    return [[gui.Input(f"Name", key=f"task-{chap}-{group}-{num}-name", tooltip="Name/Titel der Aufgabe"),
+             gui.Input("Thema", key=f"task-{chap}-{group}-{num}-topic",
+                       tooltip="Inhalt eines Goals, das umgesetzt werden soll."),
              gui.DropDown(["INFORMATIONAL", "OPTIONAL", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
-                          key=f"task-{chap}-{group}-{num}-relevance"),
+                          key=f"task-{chap}-{group}-{num}-relevance", tooltip="Relevanz der Aufgabe"),
              gui.Column([[gui.Frame(f"Alternativen",
-                                    [[gui.Button("Alternativen", key=f"task-{chap}-{group}-{num}-alternative")]],
+                                    [[gui.Button("Alternativen", key=f"task-{chap}-{group}-{num}-alternative",
+                                                 tooltip="Fügt eine Alternative des zu suchenden Inhalts hinzu.")]],
                                     key=f"Frame-task-{chap}-{group}-{num}-alternative")]])]]
 
 
@@ -67,15 +74,18 @@ def add_structure_task_alternative(window: gui.Window, chapter: int, group: int,
     frame: gui.Frame = window.find_element(f"Frame-task-{chapter}-{group}-{task}-alternative")
     num = len(frame.widget.children)
     new_alternative_line = [
-        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"task-{chapter}-{group}-{task}-alternative-{num}")]]
+        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"task-{chapter}-{group}-{task}-alternative-{num}",
+                                                   tooltip="Fügt eine Alternative des zu suchenden Inhalts hinzu.")]]
     window.extend_layout(frame, new_alternative_line)
     window.refresh()
 
 
+# ------------------- GROUP ------------------------------------------------------
+
 def create_new_group(chap: int, group: int) -> List[List]:
     layout_group = [
-        [gui.Input(f"Gruppe {chap}-{group}", key=f"group-{chap}-{group}-name"),
-         gui.Button("Update", key=f"group-{chap}-{group}-update")],
+        [gui.Input(f"Gruppe {chap}-{group}", key=f"group-{chap}-{group}-name", tooltip="Name der Gruppe"),
+         gui.Button("Update", key=f"group-{chap}-{group}-update", tooltip="Aktualisiert den Namen der Gruppe")],
         [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"group-{chap}-{group}-alternative")]],
                    key=f"Frame-group-{chap}-{group}-alternative")],
         [gui.HSeparator()], create_new_structure_task(chap, group, 1)[0]]
@@ -101,11 +111,16 @@ def add_group_alternative(window: gui.Window, chapter: int, group):
     window.refresh()
 
 
+# -------- CHAPTER -----------------------------------------------
+
 def create_new_chapter(chap: int, weight: float) -> List[List]:
     layout_chapter = [
-        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"), gui.Button("Update", key=f"chapter-{chap}-update"),
-         gui.Text("Stundenzahl"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight")],
-        [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative")]],
+        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"),
+         gui.Button("Update", key=f"chapter-{chap}-update", tooltip="Aktualisiert den Namen des Kapitels"),
+         gui.Text("Stundenzahl"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight",
+                                            tooltip="Studenanzahl, die für dieses Kapitel vorgesehen sind.")],
+        [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative",
+                                                 tooltip="Fügt Alternative für das Wissensgebiet hinzu")]],
                    key=f"Frame-chapter-{chap}-alternative")],
         [gui.HSeparator()], create_new_group(chap, 1)[0]]
     return [[gui.Frame(f"Kapitel {chap}",
@@ -210,7 +225,7 @@ def export_to_json(values: dict[str, any]):
         chapter = {"key": f"chapter-{key}",
                    "name": values[elements[0]],
                    "weight": float(values[elements[1]]),
-                   "knowledgeAreas": [values[elem] for elem in elements[2:] if values[elem] is not ""],
+                   "knowledgeAreas": [values[elem] for elem in elements[2:] if values[elem] != ""],
                    "groups": []}
         chapters.append(chapter)
 
@@ -225,7 +240,7 @@ def export_to_json(values: dict[str, any]):
     for key, elements in group_dict.items():
         group = {"key": elements[0].removesuffix("-name"),
                  "name": values[elements[0]],
-                 "knowledgeAreas": [values[elem] for elem in elements[1:] if values[elem] is not ""],
+                 "knowledgeAreas": [values[elem] for elem in elements[1:] if values[elem] != ""],
                  "tasks": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
@@ -245,7 +260,7 @@ def export_to_json(values: dict[str, any]):
                 "name": values[elements[0]],
                 "topic": values[elements[1]],
                 "relevance": values[elements[2]],
-                "knowledgeAreas": [values[elem] for elem in elements[3:] if values[elem] is not ""]}
+                "knowledgeAreas": [values[elem] for elem in elements[3:] if values[elem] != ""]}
         chapter_num = int(elements[0].split("-")[1])
         chapter = chapters[chapter_num - 1]
         group_num = int(elements[0].split("-")[2])
