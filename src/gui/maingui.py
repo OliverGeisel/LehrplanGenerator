@@ -33,3 +33,17 @@ def add_line_in_frame(window: gui.Window, frame: gui.Frame, line: List[List]):
 
 def popup_import():
     return gui.popup_get_file("Plan der geöffnet werden soll!", "Öffnen", "./plan.json")
+
+
+def create_edit(jsonContent):
+    return gui.Window("Edit", [[]])
+
+
+def run_edit(window: gui.Window):
+    try:
+        while True:
+            event, values = window.read()
+            if event == gui.WIN_CLOSED:
+                break
+    except:
+        gui.popup_error("Fehler!")

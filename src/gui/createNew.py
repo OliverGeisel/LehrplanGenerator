@@ -4,6 +4,7 @@ import re
 from typing import List
 
 import PySimpleGUI as gui
+
 from courseplan import CoursePlan
 
 new_content_task = "New-Content-Task"
@@ -31,7 +32,9 @@ meta_layout = [[gui.Text("Kursname:"), gui.Input(key="meta-name-input")],
                [gui.Text("Jahr:"), gui.Input(key="meta-year-input")],
                [gui.Text("Schultyp:"),
                 gui.DropDown(["Gymnasium", "Grundschule", "Realschule", "Universität", "Berufsschule"], ["Gymnasium"],
-                             key="meta-typ-input")],
+                             key="meta-type-input")],
+               [gui.Text("Stufe:"),
+                gui.InputText("Klasse X", key="meta-level-input")],
                [gui.Button("Zusätzliche Info", key="New-Meta-Line")]
                ]
 
@@ -42,9 +45,10 @@ def create_goal(num: int) -> List[List]:
                                 default_value=["Know"],
                                 key=f"goal-expression-{num}"), gui.Input("MasterKey-Word", key=f"goal-word-{num}"),
                    gui.MLine("Complete text!", size=(45, 2), key=f"goal-complete-{num}")])
-    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}",
-                              tooltip="Hinzufügen eines Terms, der im Ziel vorkommt")])
-    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}", tooltip="Weiter Term, der im Ziel vorkommen")])
+    layout.append(
+        [gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}",
+                    tooltip="Fügt ein Feld für weitere Inhalte, des Goals, hinzu")])
+    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}", tooltip="Inhalt des Goals")])
 
     return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}", background_color="green")]]
 
@@ -53,13 +57,17 @@ inhalt_layout = [[gui.Column(create_goal(1), key="column-goals")],
                  [gui.Button("Weiters Ziel", key=new_goal, tooltip="Hinzufügen eines weiteren Ziels")]]
 
 
+# -------------- TASK ------------------------------------------------------
 def create_new_structure_task(chap: int, group: int, num: int) -> List[List]:
-    return [[gui.Input(key=f"task-{chap}-{group}-{num}-name"),
-             gui.Input("Thema", key=f"task-{chap}-{group}-{num}-topic"),
+    return [[gui.Input(f"Name", key=f"task-{chap}-{group}-{num}-name", tooltip="Name/Titel der Aufgabe"),
+             gui.Text("Thema:", tooltip=f"Das Thema, der Aufgabe {chap}-{group}-{num}."),
+             gui.Input("", key=f"task-{chap}-{group}-{num}-topic",
+                       tooltip="Inhalt eines Goals, das umgesetzt werden soll."),
              gui.DropDown(["INFORMATIONAL", "OPTIONAL", "IMPORTANT", "MANDATORY"], default_value=["MANDATORY"],
-                          key=f"task-{chap}-{group}-{num}-relevance"),
+                          key=f"task-{chap}-{group}-{num}-relevance", tooltip="Relevanz der Aufgabe"),
              gui.Column([[gui.Frame(f"Alternativen",
-                                    [[gui.Button("Alternativen", key=f"task-{chap}-{group}-{num}-alternative")]],
+                                    [[gui.Button("Alternativen", key=f"task-{chap}-{group}-{num}-alternative",
+                                                 tooltip="Fügt eine Alternative des zu suchenden Inhalts hinzu.")]],
                                     key=f"Frame-task-{chap}-{group}-{num}-alternative")]])]]
 
 
@@ -67,17 +75,22 @@ def add_structure_task_alternative(window: gui.Window, chapter: int, group: int,
     frame: gui.Frame = window.find_element(f"Frame-task-{chapter}-{group}-{task}-alternative")
     num = len(frame.widget.children)
     new_alternative_line = [
-        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"task-{chapter}-{group}-{task}-alternative-{num}")]]
+        [gui.Text(f"Alternative-{num}"), gui.Input(key=f"task-{chapter}-{group}-{task}-alternative-{num}",
+                                                   tooltip="Fügt eine Alternative des zu suchenden Inhalts hinzu.")]]
     window.extend_layout(frame, new_alternative_line)
     window.refresh()
 
 
+# ------------------- GROUP ------------------------------------------------------
+
 def create_new_group(chap: int, group: int) -> List[List]:
     layout_group = [
-        [gui.Input(f"Gruppe {chap}-{group}", key=f"group-{chap}-{group}-name"),
-         gui.Button("Update", key=f"group-{chap}-{group}-update")],
+        [gui.Input(f"Gruppe {chap}-{group}", key=f"group-{chap}-{group}-name", tooltip="Name der Gruppe"),
+         gui.Button("Update", key=f"group-{chap}-{group}-update", tooltip="Aktualisiert den Namen der Gruppe")],
         [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"group-{chap}-{group}-alternative")]],
-                   key=f"Frame-group-{chap}-{group}-alternative", background_color="orange red")],
+                   key=f"Frame-group-{chap}-{group}-alternative", background_color="orange red"),
+         gui.Text("Thema:", tooltip=f"Das Thema, der Gruppe {chap}-{group}."),
+         gui.Input("", key=f"group-{chap}-{group}-topic", tooltip="Inhalt eines Goals, das umgesetzt werden soll.")],
         [gui.HSeparator()], create_new_structure_task(chap, group, 1)[0]]
     return [[gui.Frame(f"Gruppe {chap}-{group}",
                        layout_group, key=f"Frame-group-{chap}-{group}", background_color="orange red")]]
@@ -101,12 +114,20 @@ def add_group_alternative(window: gui.Window, chapter: int, group):
     window.refresh()
 
 
+# -------- CHAPTER -----------------------------------------------
+
 def create_new_chapter(chap: int, weight: float) -> List[List]:
     layout_chapter = [
-        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"), gui.Button("Update", key=f"chapter-{chap}-update"),
-         gui.Text("Stundenzahl"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight")],
-        [gui.Frame("Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative")]],
-                   key=f"Frame-chapter-{chap}-alternative", background_color="red")],
+        [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"),
+         gui.Button("Update", key=f"chapter-{chap}-update", tooltip="Aktualisiert den Namen des Kapitels"),
+         gui.Text("Stundenzahl"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight",
+                                            tooltip="Studenanzahl, die für dieses Kapitel vorgesehen sind.")],
+        [gui.Frame("Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative",
+                                                tooltip="Fügt Alternative für das Wissensgebiet hinzu")],
+                                    ],
+                   key=f"Frame-chapter-{chap}-alternative", background_color="red"),
+         gui.Text("Thema:", tooltip=f"Das Thema, des Kapitels {chap}."),
+         gui.Input("", key=f"chapter-{chap}-topic", tooltip="Inhalt eines Goals, das umgesetzt werden soll.")],
         [gui.HSeparator()], create_new_group(chap, 1)[0]]
     return [[gui.Frame(f"Kapitel {chap}",
                        layout_chapter, key=f"Frame-chapter-{chap}", background_color="red")]]
@@ -209,7 +230,8 @@ def export_to_json(values: dict[str, any]):
         chapter = {"key": f"chapter-{key}",
                    "name": values[elements[0]],
                    "weight": float(values[elements[1]]),
-                   "alternatives": [values[elem] for elem in elements[2:] if values[elem] != ""],
+                   "alternatives": [values[elem] for elem in elements[2:-1] if values[elem] != ""],
+                   "topic": values[elements[-1]],
                    "groups": []}
         chapters.append(chapter)
 
@@ -224,7 +246,8 @@ def export_to_json(values: dict[str, any]):
     for key, elements in group_dict.items():
         group = {"key": elements[0].removesuffix("-name"),
                  "name": values[elements[0]],
-                 "alternatives": [values[elem] for elem in elements[1:] if values[elem] != ""],
+                 "alternatives": [values[elem] for elem in elements[1:-1] if values[elem] != ""],
+                 "topic": values[elements[-1]],
                  "tasks": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
