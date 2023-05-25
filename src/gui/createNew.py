@@ -4,7 +4,6 @@ import re
 from typing import List
 
 import PySimpleGUI as gui
-
 from courseplan import CoursePlan
 
 new_content_task = "New-Content-Task"
@@ -43,14 +42,15 @@ def create_goal(num: int) -> List[List]:
                                 default_value=["Know"],
                                 key=f"goal-expression-{num}"), gui.Input("MasterKey-Word", key=f"goal-word-{num}"),
                    gui.MLine("Complete text!", size=(45, 2), key=f"goal-complete-{num}")])
-    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}")])
-    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}")])
+    layout.append([gui.Button("Weiterer Inhalt", key=f"new-inhalt-{num}",
+                              tooltip="Hinzufügen eines Terms, der im Ziel vorkommt")])
+    layout.append([gui.Input(str(1), key=f"goal-content-{num}-{1}", tooltip="Weiter Term, der im Ziel vorkommen")])
 
-    return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}")]]
+    return [[gui.Frame(f"goal-{num}", layout, key=f"goal-frame-{num}", background_color="green")]]
 
 
 inhalt_layout = [[gui.Column(create_goal(1), key="column-goals")],
-                 [gui.Button("Weiters Ziel", key=new_goal)]]
+                 [gui.Button("Weiters Ziel", key=new_goal, tooltip="Hinzufügen eines weiteren Ziels")]]
 
 
 def create_new_structure_task(chap: int, group: int, num: int) -> List[List]:
@@ -77,10 +77,10 @@ def create_new_group(chap: int, group: int) -> List[List]:
         [gui.Input(f"Gruppe {chap}-{group}", key=f"group-{chap}-{group}-name"),
          gui.Button("Update", key=f"group-{chap}-{group}-update")],
         [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"group-{chap}-{group}-alternative")]],
-                   key=f"Frame-group-{chap}-{group}-alternative")],
+                   key=f"Frame-group-{chap}-{group}-alternative", background_color="orange red")],
         [gui.HSeparator()], create_new_structure_task(chap, group, 1)[0]]
     return [[gui.Frame(f"Gruppe {chap}-{group}",
-                       layout_group, key=f"Frame-group-{chap}-{group}")]]
+                       layout_group, key=f"Frame-group-{chap}-{group}", background_color="orange red")]]
 
 
 def update_group(window: gui.Window, chapter, group):
@@ -105,11 +105,11 @@ def create_new_chapter(chap: int, weight: float) -> List[List]:
     layout_chapter = [
         [gui.Input(f"Kapitel {chap}", key=f"chapter-{chap}-name"), gui.Button("Update", key=f"chapter-{chap}-update"),
          gui.Text("Stundenzahl"), gui.Input(default_text=str(weight), key=f"chapter-{chap}-weight")],
-        [gui.Frame(f"Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative")]],
-                   key=f"Frame-chapter-{chap}-alternative")],
+        [gui.Frame("Alternativen", [[gui.Button("Alternativen", key=f"chapter-{chap}-alternative")]],
+                   key=f"Frame-chapter-{chap}-alternative", background_color="red")],
         [gui.HSeparator()], create_new_group(chap, 1)[0]]
     return [[gui.Frame(f"Kapitel {chap}",
-                       layout_chapter, key=f"Frame-chapter-{chap}")]]
+                       layout_chapter, key=f"Frame-chapter-{chap}", background_color="red")]]
 
 
 def add_chapter(window: gui.Window):
@@ -126,7 +126,6 @@ def update_chapter(window: gui.Window, chapter: int):
     name: gui.Input
     name = frame.Rows[0][0].get()
     frame.update(name)
-    # frame.Title = name
     window.refresh()
 
 
@@ -210,7 +209,7 @@ def export_to_json(values: dict[str, any]):
         chapter = {"key": f"chapter-{key}",
                    "name": values[elements[0]],
                    "weight": float(values[elements[1]]),
-                   "knowledgeAreas": [values[elem] for elem in elements[2:] if values[elem] is not ""],
+                   "alternatives": [values[elem] for elem in elements[2:] if values[elem] != ""],
                    "groups": []}
         chapters.append(chapter)
 
@@ -225,7 +224,7 @@ def export_to_json(values: dict[str, any]):
     for key, elements in group_dict.items():
         group = {"key": elements[0].removesuffix("-name"),
                  "name": values[elements[0]],
-                 "knowledgeAreas": [values[elem] for elem in elements[1:] if values[elem] is not ""],
+                 "alternatives": [values[elem] for elem in elements[1:] if values[elem] != ""],
                  "tasks": list()}
         chapter_num = int(key.split("-")[0])
         chapter = chapters[chapter_num - 1]
@@ -245,7 +244,7 @@ def export_to_json(values: dict[str, any]):
                 "name": values[elements[0]],
                 "topic": values[elements[1]],
                 "relevance": values[elements[2]],
-                "knowledgeAreas": [values[elem] for elem in elements[3:] if values[elem] is not ""]}
+                "alternatives": [values[elem] for elem in elements[3:] if values[elem] != ""]}
         chapter_num = int(elements[0].split("-")[1])
         chapter = chapters[chapter_num - 1]
         group_num = int(elements[0].split("-")[2])
@@ -328,7 +327,8 @@ def run_new(window: gui.Window):
             frame = window.find_element(f"goal-frame-{num}")
             content_num = len(frame.Widget.children) - 1
             line = [
-                [gui.Input(str(content_num), key=f"goal-content-{num}-{content_num}")]]
+                [gui.Input(str(content_num), key=f"goal-content-{num}-{content_num}",
+                           tooltip="Term, der im Ziel vorkommt")]]
             window.extend_layout(frame, line)
         # add goal
         elif event == new_goal:
@@ -386,11 +386,11 @@ def run_new(window: gui.Window):
 
 new_layout = [[gui.Text("Bitte füllen Sie die folgenden Felder aus")],
               [gui.HSeparator()],
-              [gui.Frame("Metadata", meta_layout, key="meta-frame")],
+              [gui.Frame("Metadata", meta_layout, key="meta-frame", background_color="cadet blue")],
               [gui.HSeparator()],
-              [gui.Frame("Inhalt", inhalt_layout, key="value-frame")],
+              [gui.Frame("Inhalt", inhalt_layout, key="value-frame", background_color="light green")],
               [gui.HSeparator()],
-              [gui.Frame("Struktur", create_new_chapter(1, 2), key="Structure-Frame")],
+              [gui.Frame("Struktur", create_new_chapter(1, 2), key="Structure-Frame", background_color="violet red")],
               [gui.Frame("Absätze",
                          [[gui.Button("Aufgabe", key=new_task), gui.Button("Gruppe", key=new_group),
                            gui.Button("Kapitel", key=new_chapter)]])],
